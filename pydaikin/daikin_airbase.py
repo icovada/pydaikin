@@ -94,6 +94,11 @@ class DaikinAirBase(DaikinBRP069):
         return False
 
     @property
+    def support_demand_control(self):
+        """Demand (power-limit) control is not supported on AirBase units."""
+        return False
+
+    @property
     def outside_temperature(self):
         """AirBase unit returns otemp if master controller starts before it.
 

@@ -71,6 +71,12 @@ async def test_daikinBRP069(aresponses, client_session):
         response="ret=OK,previous_year=7/0/1/0/1/21/57/24/2/0/0/2,this_year=4/0/0/0/1/18/40/53",
     )
 
+    aresponses.add(
+        path_pattern="/aircon/get_demand_control",
+        method_pattern="GET",
+        response="ret=OK,type=1,en_demand=0,mode=0,max_pow=50,scdl_per_day=4,moc=0,tuc=0,wec=0,thc=0,frc=0,sac=0,suc=0",
+    )
+
     device = DaikinBRP069('ip', session=client_session)
 
     await device.init()
@@ -132,6 +138,12 @@ async def test_daikinBRP069_with_optional_endpoints(aresponses, client_session):
         path_pattern="/common/get_notify",
         method_pattern="GET",
         response="ret=OK,auto_off_flg=0,auto_off_tm=- -",
+    )
+
+    aresponses.add(
+        path_pattern="/aircon/get_demand_control",
+        method_pattern="GET",
+        response="ret=OK,type=1,en_demand=0,mode=0,max_pow=50,scdl_per_day=4,moc=0,tuc=0,wec=0,thc=0,frc=0,sac=0,suc=0",
     )
 
     device = DaikinBRP069('ip', session=client_session, fetch_optional=True)
@@ -197,6 +209,12 @@ async def test_daikinBRP069_static_caching(aresponses, client_session):
         path_pattern="/aircon/get_sensor_info",
         method_pattern="GET",
         response="ret=OK,htemp=26.0,hhum=-,otemp=22.0,err=0,cmpfreq=45",
+    )
+
+    aresponses.add(
+        path_pattern="/aircon/get_demand_control",
+        method_pattern="GET",
+        response="ret=OK,type=1,en_demand=0,mode=0,max_pow=50,scdl_per_day=4,moc=0,tuc=0,wec=0,thc=0,frc=0,sac=0,suc=0",
     )
 
     device = DaikinBRP069('ip', session=client_session)
@@ -271,6 +289,12 @@ async def test_daikinBRP072C(aresponses, client_session):
         path_pattern="/aircon/get_year_power",
         method_pattern="GET",
         response="ret=OK,previous_year=7/0/1/0/1/21/57/24/2/0/0/2,this_year=4/0/0/0/1/18/40/53",
+    )
+
+    aresponses.add(
+        path_pattern="/aircon/get_demand_control",
+        method_pattern="GET",
+        response="ret=OK,type=1,en_demand=0,mode=0,max_pow=50,scdl_per_day=4,moc=0,tuc=0,wec=0,thc=0,frc=0,sac=0,suc=0",
     )
 
     device = DaikinBRP072C('ip', session=client_session, key="xxxkeyxxx")

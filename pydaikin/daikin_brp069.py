@@ -180,6 +180,31 @@ class DaikinBRP069(Appliance):
         """
         super().__init__(device_id, session)
         self._fetch_optional = fetch_optional
+        # Demand-control state is kept separate from self.values because its
+        # 'mode'/'type' keys collide with the HVAC control-info keys.
+        self._demand: dict = {}
+
+    @property
+    def target_temperature_step(self) -> float:
+        """BRP069/BRP072C units accept half-degree setpoints."""
+        return 0.5
+
+    @property
+    def support_demand_control(self) -> bool:
+        """Return True if the outdoor unit exposes demand (power-limit) control."""
+        return self.values.get('dmnd', invalidate=False) == '1'
+
+    @property
+    def max_power(self):
+        """Return the demand-control max power limit in percent (100 = no cap)."""
+        if not self._demand:
+            return None
+        if self._demand.get('en_demand') != '1':
+            return 100.0
+        try:
+            return float(self._demand['max_pow'])
+        except (KeyError, TypeError, ValueError):
+            return None
 
     async def update_status(self, resources=None, *, force_refresh=False):
         """Update status with smart caching.
@@ -222,6 +247,19 @@ class DaikinBRP069(Appliance):
 
         # Call parent's update_status with filtered resources
         await super().update_status(resources_to_fetch)
+
+        # Demand control lives on its own endpoint; keep it out of self.values
+        # (its 'mode'/'type' keys would clobber the HVAC control-info keys).
+        # Refresh it alongside the control info it logically belongs to.
+        if self.support_demand_control and 'aircon/get_control_info' in resources:
+            await self._update_demand_control()
+
+    async def _update_demand_control(self):
+        """Refresh demand-control state into the dedicated self._demand dict."""
+        try:
+            self._demand = await self._get_resource('aircon/get_demand_control')
+        except Exception as exc:  # pylint: disable=broad-except
+            _LOGGER.error('Raised "%s" while fetching demand control', exc)
 
     def get_info_resources(self):
         """Returns info_resources"""
@@ -331,6 +369,45 @@ class DaikinBRP069(Appliance):
             _LOGGER.debug("Sending request to %s with params: %s", path, params)
             # Update the adv value from the response
             self.values.update(await self._get_resource(path, params))
+
+    # Per-day schedule flags preserved across a demand-control write.
+    DEMAND_DAY_KEYS = ('suc', 'moc', 'tuc', 'wec', 'thc', 'frc', 'sac')
+
+    async def set_demand_control(self, max_pow=None, *, enable=True):
+        """Set demand (power-limit) control.
+
+        Reads the current demand configuration to preserve mode/type and the per-day
+        schedule flags, then overrides the enable flag and max power percentage.
+        Kept out of self.values because 'mode'/'type' collide with control-info.
+
+        The set endpoint expects an empty 'lpw' (which get_demand_control omits) and
+        does not take 'scdl_per_day' (which it returns), so the parameters are built
+        explicitly to match the request the official app sends.
+        """
+        current = await self._get_resource('aircon/get_demand_control')
+
+        params = {
+            'en_demand': '1' if enable else '0',
+            'mode': current.get('mode', '0'),
+            'type': current.get('type', '1'),
+            'max_pow': (
+                str(int(max_pow))
+                if max_pow is not None
+                else current.get('max_pow', '100')
+            ),
+            'lpw': current.get('lpw', ''),
+        }
+        params.update({k: current.get(k, '0') for k in self.DEMAND_DAY_KEYS})
+
+        path = 'aircon/set_demand_control'
+        _LOGGER.debug("Sending request to %s with params: %s", path, params)
+        await self._get_resource(path, params)
+        self._demand = {**current, **params}
+
+    async def set_max_power(self, percentage):
+        """Set the demand-control max power percentage (100 removes the cap)."""
+        percentage = int(percentage)
+        await self.set_demand_control(max_pow=percentage, enable=percentage < 100)
 
     async def set_zone(self, zone_id, key, value):
         """Set zone status."""

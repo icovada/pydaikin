@@ -400,6 +400,11 @@ class Appliance(
         return super().support_energy_consumption
 
     @property
+    def support_demand_control(self) -> bool:
+        """Return True if the outdoor unit supports demand (power-limit) control."""
+        return False
+
+    @property
     def outside_temperature(self) -> Optional[float]:
         """Return current outside temperature."""
         return self._parse_number('otemp')
@@ -413,6 +418,16 @@ class Appliance(
     def target_temperature(self) -> Optional[float]:
         """Return current target temperature."""
         return self._parse_number('stemp')
+
+    @property
+    def target_temperature_step(self) -> float:
+        """Return the smallest supported target-temperature increment."""
+        return 1.0
+
+    @property
+    def max_power(self) -> Optional[float]:
+        """Return the demand-control max power limit in percent (100 = no cap)."""
+        return None
 
     @property
     def compressor_frequency(self) -> Optional[float]:
@@ -522,6 +537,14 @@ class Appliance(
 
     async def set_streamer(self, mode):
         """Enable or disable the streamer."""
+        raise NotImplementedError
+
+    async def set_demand_control(self, max_pow=None, *, enable=True):
+        """Set demand (power-limit) control."""
+        raise NotImplementedError
+
+    async def set_max_power(self, percentage):
+        """Set the demand-control max power percentage."""
         raise NotImplementedError
 
     @property

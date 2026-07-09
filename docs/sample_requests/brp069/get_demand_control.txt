@@ -1,0 +1,1 @@
+ret=OK,type=1,en_demand=0,mode=0,max_pow=50,scdl_per_day=4,moc=0,tuc=0,wec=0,thc=0,frc=0,sac=0,suc=0
